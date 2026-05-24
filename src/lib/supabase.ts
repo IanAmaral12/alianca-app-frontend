@@ -1,8 +1,9 @@
 import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+
+const { createClient } = require('@supabase/supabase-js/dist/index.cjs') as typeof import('@supabase/supabase-js');
 
 const fallbackUrl = Platform.select({
   android: 'http://10.0.2.2:54321',

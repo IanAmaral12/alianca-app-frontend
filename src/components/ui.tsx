@@ -17,7 +17,7 @@ import { palette, radii, spacing, typography } from '../theme';
 type ScreenShellProps = {
   children: ReactNode;
   footer?: ReactNode;
-  subtitle: string;
+  subtitle?: string;
   title: string;
   eyebrow?: string;
 };
@@ -61,7 +61,7 @@ export function ScreenShell({ children, footer, subtitle, title, eyebrow = 'Alia
           <View style={styles.heroCard}>
             <Text style={styles.kicker}>{eyebrow}</Text>
             <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           </View>
           <View style={styles.stack}>{children}</View>
           {footer ? <View style={styles.footer}>{footer}</View> : null}

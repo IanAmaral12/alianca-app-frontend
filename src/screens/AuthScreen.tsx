@@ -98,11 +98,9 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   }
 
   return (
-    <ScreenShell
-      subtitle="Entre com calma. A entrada ficou mais limpa para voce focar apenas no proximo passo."
-      title={mode === 'sign-in' ? 'Entrar' : 'Criar conta'}>
+    <ScreenShell title={mode === 'sign-in' ? 'Entrar' : 'Criar conta'}>
       <SectionCard>
-        <SectionTitle caption="Escolha o modo e siga sem excesso de informacao na tela." title="Acesso" />
+        <SectionTitle title="Acesso" />
         <TabSwitcher
           items={[
             { key: 'sign-in', label: 'Entrar' },

@@ -134,7 +134,6 @@ export function ConnectionHomeScreen({
 
   return (
     <ScreenShell
-      subtitle="A conexao agora fica dividida em blocos pequenos: compartilhar, buscar e responder."
       title="Vincule com o parceiro"
       footer={
         <>

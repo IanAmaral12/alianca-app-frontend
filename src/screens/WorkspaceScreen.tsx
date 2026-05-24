@@ -326,7 +326,6 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
 
   return (
     <ScreenShell
-      subtitle="O workspace agora fica dividido por contexto: progresso, sugestoes, criacao e acompanhamento."
       title="Agenda do casal"
       footer={
         <>
