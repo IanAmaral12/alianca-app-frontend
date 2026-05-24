@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { ActionButton, ScreenShell, SectionCard, SectionTitle, TextField } from '../components/ui';
+import { brazilianDateToIso, formatDateInput, isValidBrazilianDate, isoDateToBrazilian } from '../lib/date';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/app';
 
@@ -12,7 +13,7 @@ type ProfileSetupScreenProps = {
 
 export function ProfileSetupScreen({ onRefresh, onSignOut, profile }: ProfileSetupScreenProps) {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
-  const [birthDate, setBirthDate] = useState(profile?.birth_date ?? '');
+  const [birthDate, setBirthDate] = useState(isoDateToBrazilian(profile?.birth_date));
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
@@ -26,8 +27,15 @@ export function ProfileSetupScreen({ onRefresh, onSignOut, profile }: ProfileSet
       return;
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
-      Alert.alert('Data invalida', 'Use o formato YYYY-MM-DD para continuar.');
+    if (!isValidBrazilianDate(birthDate)) {
+      Alert.alert('Data invalida', 'Use o formato DD/MM/AAAA para continuar.');
+      return;
+    }
+
+    const isoBirthDate = brazilianDateToIso(birthDate);
+
+    if (!isoBirthDate) {
+      Alert.alert('Data invalida', 'Nao foi possivel interpretar a data informada.');
       return;
     }
 
@@ -36,7 +44,7 @@ export function ProfileSetupScreen({ onRefresh, onSignOut, profile }: ProfileSet
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ birth_date: birthDate, full_name: fullName.trim() })
+        .update({ birth_date: isoBirthDate, full_name: fullName.trim() })
         .eq('id', profile.id);
 
       if (error) {
@@ -60,7 +68,13 @@ export function ProfileSetupScreen({ onRefresh, onSignOut, profile }: ProfileSet
       <SectionCard>
         <SectionTitle caption="Esses dados aparecem apenas para organizar a experiencia de voces." title="Dados pessoais" />
         <TextField label="Nome" onChangeText={setFullName} placeholder="Como seu par vai te reconhecer" value={fullName} />
-        <TextField label="Data de nascimento" onChangeText={setBirthDate} placeholder="YYYY-MM-DD" value={birthDate} />
+        <TextField
+          keyboardType="number-pad"
+          label="Data de nascimento"
+          onChangeText={(value) => setBirthDate(formatDateInput(value))}
+          placeholder="DD/MM/AAAA"
+          value={birthDate}
+        />
         <ActionButton fullWidth label="Salvar e continuar" loading={loading} onPress={handleSave} />
       </SectionCard>
     </ScreenShell>

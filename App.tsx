@@ -26,6 +26,10 @@ function isMissingRow(error: { code?: string } | null) {
   return error?.code === 'PGRST116';
 }
 
+function readMetadataText(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [appData, setAppData] = useState<AppData | null>(null);
@@ -112,9 +116,39 @@ export default function App() {
         throw invitationsResult.error;
       }
 
-      const profile = (profileResult.data ?? null) as Profile | null;
+      let profile = (profileResult.data ?? null) as Profile | null;
       const userQuestionnaire = (questionnaireResult.data ?? null) as UserQuestionnaire | null;
       const invitations = (invitationsResult.data ?? []) as PartnershipInvitation[];
+
+      const metadataFullName = readMetadataText(session?.user.user_metadata?.full_name);
+      const metadataBirthDate = readMetadataText(session?.user.user_metadata?.birth_date);
+      const fallbackEmail = session?.user.email ?? '';
+
+      const shouldHydrateProfile =
+        Boolean(session?.user) &&
+        (!profile ||
+          !profile.full_name ||
+          !profile.birth_date ||
+          !profile.email);
+
+      if (shouldHydrateProfile && (metadataFullName || metadataBirthDate || fallbackEmail)) {
+        const { data: hydratedProfile, error: hydrateError } = await supabase
+          .from('profiles')
+          .upsert({
+            birth_date: profile?.birth_date ?? metadataBirthDate,
+            email: profile?.email ?? fallbackEmail,
+            full_name: profile?.full_name ?? metadataFullName,
+            id: userId,
+          })
+          .select('*')
+          .single();
+
+        if (hydrateError) {
+          throw hydrateError;
+        }
+
+        profile = hydratedProfile as Profile;
+      }
 
       let children: CoupleChild[] = [];
       let workspace: CoupleWorkspace | null = null;

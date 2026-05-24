@@ -15,6 +15,7 @@ import {
   Tag,
   sharedStyles,
 } from '../components/ui';
+import { brazilianDateToIsoDateTime, formatDateInput, isValidBrazilianDate, isoDateToBrazilian } from '../lib/date';
 import { getLevelProgress } from '../lib/levels';
 import { notifyPartnerTask } from '../lib/notifications';
 import { supabase } from '../lib/supabase';
@@ -81,7 +82,7 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
     setTitle(task.title);
     setDescription(task.description ?? '');
     setDifficulty(task.difficulty);
-    setDueAt(task.due_at ? task.due_at.slice(0, 10) : '');
+    setDueAt(isoDateToBrazilian(task.due_at));
   }
 
   function resetComposer() {
@@ -92,31 +93,29 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
     setDueAt('');
   }
 
-  function isValidDate(value: string) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(value);
-  }
-
   async function saveTask() {
     if (!title.trim()) {
       Alert.alert('Titulo obrigatorio', 'Informe um titulo para a tarefa.');
       return;
     }
 
-    if (dueAt && !isValidDate(dueAt)) {
-      Alert.alert('Prazo invalido', 'Use o formato YYYY-MM-DD para o prazo.');
+    if (dueAt && !isValidBrazilianDate(dueAt)) {
+      Alert.alert('Prazo invalido', 'Use o formato DD/MM/AAAA para o prazo.');
       return;
     }
 
     setLoading(true);
 
     try {
+      const dueAtIso = dueAt ? brazilianDateToIsoDateTime(dueAt) : null;
+
       if (draftId) {
         const { error } = await supabase
           .from('couple_tasks')
           .update({
             description: description.trim() || null,
             difficulty,
-            due_at: dueAt ? `${dueAt}T18:00:00.000Z` : null,
+            due_at: dueAtIso,
             title: title.trim(),
             updated_by: currentUserId,
           })
@@ -130,7 +129,7 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
           created_by: currentUserId,
           description: description.trim() || null,
           difficulty,
-          due_at: dueAt ? `${dueAt}T18:00:00.000Z` : null,
+          due_at: dueAtIso,
           title: title.trim(),
           workspace_id: workspace.id,
         });
@@ -220,7 +219,13 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
           placeholder="Detalhes, contexto ou como executar a tarefa."
           value={description}
         />
-        <TextField label="Prazo" onChangeText={setDueAt} placeholder="YYYY-MM-DD" value={dueAt} />
+        <TextField
+          keyboardType="number-pad"
+          label="Prazo"
+          onChangeText={(value) => setDueAt(formatDateInput(value))}
+          placeholder="DD/MM/AAAA"
+          value={dueAt}
+        />
         <View style={sharedStyles.row}>
           {difficultyOptions.map((option) => (
             <ChoiceChip

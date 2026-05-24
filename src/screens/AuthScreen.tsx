@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { ActionButton, ChoiceChip, InfoStripe, ScreenShell, SectionCard, SectionTitle, TextField, sharedStyles } from '../components/ui';
+import { brazilianDateToIso, formatDateInput, isValidBrazilianDate } from '../lib/date';
 import { supabase } from '../lib/supabase';
 
 type AuthScreenProps = {
   onAuthenticated: () => void;
 };
-
-function isValidBirthDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
 
 export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
@@ -33,8 +30,8 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         return;
       }
 
-      if (!isValidBirthDate(birthDate)) {
-        Alert.alert('Data invalida', 'Use o formato YYYY-MM-DD para sua data de nascimento.');
+      if (!isValidBrazilianDate(birthDate)) {
+        Alert.alert('Data invalida', 'Use o formato DD/MM/AAAA para sua data de nascimento.');
         return;
       }
     }
@@ -52,12 +49,18 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
           throw error;
         }
       } else {
+        const isoBirthDate = brazilianDateToIso(birthDate);
+
+        if (!isoBirthDate) {
+          throw new Error('Data de nascimento invalida.');
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
           options: {
             data: {
-              birth_date: birthDate,
+              birth_date: isoBirthDate,
               full_name: fullName.trim(),
             },
           },
@@ -70,8 +73,12 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         if (data.user?.id) {
           const { error: profileError } = await supabase
             .from('profiles')
-            .update({ birth_date: birthDate, full_name: fullName.trim() })
-            .eq('id', data.user.id);
+            .upsert({
+              birth_date: isoBirthDate,
+              email: normalizedEmail,
+              full_name: fullName.trim(),
+              id: data.user.id,
+            });
 
           if (profileError) {
             throw profileError;
@@ -108,8 +115,9 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <TextField label="Nome" onChangeText={setFullName} placeholder="Como voce quer aparecer" value={fullName} />
             <TextField
               label="Data de nascimento"
-              onChangeText={setBirthDate}
-              placeholder="YYYY-MM-DD"
+              keyboardType="number-pad"
+              onChangeText={(value) => setBirthDate(formatDateInput(value))}
+              placeholder="DD/MM/AAAA"
               value={birthDate}
             />
           </>

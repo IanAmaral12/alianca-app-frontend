@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { ActionButton, ChoiceChip, InfoStripe, ScreenShell, SectionCard, SectionTitle, TextField, sharedStyles } from '../components/ui';
+import { brazilianDateToIso, formatDateInput, isValidBrazilianDate, isoDateToBrazilian } from '../lib/date';
 import { supabase } from '../lib/supabase';
 import { ChildGender, CoupleChild, CoupleWorkspace, RelationshipStage } from '../types/app';
 
@@ -30,17 +31,13 @@ const childGenderOptions: { label: string; value: ChildGender }[] = [
   { label: 'Prefiro nao informar', value: 'prefer_not_to_say' },
 ];
 
-function isValidDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
 function normalizeChildren(children: CoupleChild[]) {
   if (children.length === 0) {
     return [emptyChild()];
   }
 
   return children.map((child) => ({
-    birth_date: child.birth_date,
+    birth_date: isoDateToBrazilian(child.birth_date),
     gender: child.gender,
     name: child.name,
   }));
@@ -48,9 +45,9 @@ function normalizeChildren(children: CoupleChild[]) {
 
 export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, workspace }: CoupleQuestionnaireScreenProps) {
   const [relationStage, setRelationStage] = useState<RelationshipStage>((workspace.relation_stage ?? 'dating') as RelationshipStage);
-  const [datingSince, setDatingSince] = useState(workspace.dating_since ?? '');
-  const [engagedSince, setEngagedSince] = useState(workspace.engaged_since ?? '');
-  const [marriedSince, setMarriedSince] = useState(workspace.married_since ?? '');
+  const [datingSince, setDatingSince] = useState(isoDateToBrazilian(workspace.dating_since));
+  const [engagedSince, setEngagedSince] = useState(isoDateToBrazilian(workspace.engaged_since));
+  const [marriedSince, setMarriedSince] = useState(isoDateToBrazilian(workspace.married_since));
   const [hasChildren, setHasChildren] = useState<boolean>(workspace.has_children ?? false);
   const [childrenCount, setChildrenCount] = useState(workspace.children_count ? String(workspace.children_count) : '');
   const [childDrafts, setChildDrafts] = useState<ChildDraft[]>(normalizeChildren(children));
@@ -91,18 +88,18 @@ export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, work
   }
 
   async function handleSave() {
-    if (!isValidDate(datingSince)) {
-      Alert.alert('Data invalida', 'Preencha a data de namoro no formato YYYY-MM-DD.');
+    if (!isValidBrazilianDate(datingSince)) {
+      Alert.alert('Data invalida', 'Preencha a data de namoro no formato DD/MM/AAAA.');
       return;
     }
 
-    if (relationStage !== 'dating' && !isValidDate(engagedSince)) {
-      Alert.alert('Data invalida', 'Preencha a data de noivado no formato YYYY-MM-DD.');
+    if (relationStage !== 'dating' && !isValidBrazilianDate(engagedSince)) {
+      Alert.alert('Data invalida', 'Preencha a data de noivado no formato DD/MM/AAAA.');
       return;
     }
 
-    if (relationStage === 'married' && !isValidDate(marriedSince)) {
-      Alert.alert('Data invalida', 'Preencha a data de casamento no formato YYYY-MM-DD.');
+    if (relationStage === 'married' && !isValidBrazilianDate(marriedSince)) {
+      Alert.alert('Data invalida', 'Preencha a data de casamento no formato DD/MM/AAAA.');
       return;
     }
 
@@ -119,7 +116,7 @@ export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, work
         return;
       }
 
-      const hasInvalidChild = childDrafts.some((child) => !child.name.trim() || !isValidDate(child.birth_date));
+      const hasInvalidChild = childDrafts.some((child) => !child.name.trim() || !isValidBrazilianDate(child.birth_date));
 
       if (hasInvalidChild) {
         Alert.alert('Dados incompletos', 'Preencha nome, sexo e data de nascimento de cada filho.');
@@ -135,18 +132,26 @@ export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, work
     setLoading(true);
 
     try {
+      const isoDatingSince = brazilianDateToIso(datingSince);
+      const isoEngagedSince = relationStage === 'dating' ? null : brazilianDateToIso(engagedSince);
+      const isoMarriedSince = relationStage === 'married' ? brazilianDateToIso(marriedSince) : null;
+
+      if (!isoDatingSince || (relationStage !== 'dating' && !isoEngagedSince) || (relationStage === 'married' && !isoMarriedSince)) {
+        throw new Error('Nao foi possivel interpretar as datas informadas.');
+      }
+
       const { error } = await supabase.rpc('save_couple_questionnaire', {
         target_children: hasChildren
           ? childDrafts.map((child) => ({
-              birth_date: child.birth_date,
+              birth_date: brazilianDateToIso(child.birth_date),
               gender: child.gender,
               name: child.name.trim(),
             }))
           : [],
-        target_dating_since: datingSince,
-        target_engaged_since: relationStage === 'dating' ? null : engagedSince,
+        target_dating_since: isoDatingSince,
+        target_engaged_since: isoEngagedSince,
         target_has_children: hasChildren,
-        target_married_since: relationStage === 'married' ? marriedSince : null,
+        target_married_since: isoMarriedSince,
         target_relation_stage: relationStage,
         target_started_using_reason: reason.trim(),
         target_workspace_id: workspace.id,
@@ -177,20 +182,28 @@ export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, work
           <ChoiceChip label="Noivos" onPress={() => setRelationStage('engaged')} selected={relationStage === 'engaged'} />
           <ChoiceChip label="Casados" onPress={() => setRelationStage('married')} selected={relationStage === 'married'} />
         </View>
-        <TextField label="Data de namoro (YYYY-MM-DD)" onChangeText={setDatingSince} placeholder="2022-03-15" value={datingSince} />
+        <TextField
+          keyboardType="number-pad"
+          label="Data de namoro"
+          onChangeText={(value) => setDatingSince(formatDateInput(value))}
+          placeholder="DD/MM/AAAA"
+          value={datingSince}
+        />
         {relationStage !== 'dating' ? (
           <TextField
-            label="Data de noivado (YYYY-MM-DD)"
-            onChangeText={setEngagedSince}
-            placeholder="2024-08-01"
+            keyboardType="number-pad"
+            label="Data de noivado"
+            onChangeText={(value) => setEngagedSince(formatDateInput(value))}
+            placeholder="DD/MM/AAAA"
             value={engagedSince}
           />
         ) : null}
         {relationStage === 'married' ? (
           <TextField
-            label="Data de casamento (YYYY-MM-DD)"
-            onChangeText={setMarriedSince}
-            placeholder="2025-09-20"
+            keyboardType="number-pad"
+            label="Data de casamento"
+            onChangeText={(value) => setMarriedSince(formatDateInput(value))}
+            placeholder="DD/MM/AAAA"
             value={marriedSince}
           />
         ) : null}
@@ -241,8 +254,9 @@ export function CoupleQuestionnaireScreen({ children, onRefresh, onSignOut, work
                 </View>
                 <TextField
                   label="Data de nascimento"
-                  onChangeText={(value) => updateChild(index, 'birth_date', value)}
-                  placeholder="YYYY-MM-DD"
+                  keyboardType="number-pad"
+                  onChangeText={(value) => updateChild(index, 'birth_date', formatDateInput(value))}
+                  placeholder="DD/MM/AAAA"
                   value={child.birth_date}
                 />
               </InfoStripe>
