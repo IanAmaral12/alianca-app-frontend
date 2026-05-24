@@ -42,6 +42,12 @@ type ChoiceChipProps = {
   selected: boolean;
 };
 
+type TabSwitcherProps = {
+  items: Array<{ key: string; label: string }>;
+  onChange: (key: string) => void;
+  value: string;
+};
+
 type MetricPillProps = {
   label: string;
   value: string;
@@ -49,7 +55,7 @@ type MetricPillProps = {
 
 export function ScreenShell({ children, footer, subtitle, title, eyebrow = 'Alianca' }: ScreenShellProps) {
   return (
-    <LinearGradient colors={[palette.accentDeep, '#29435B', palette.surface]} style={styles.gradient}>
+    <LinearGradient colors={['#FFFBE0', palette.surface, '#FFFFFF']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.heroCard}>
@@ -99,10 +105,10 @@ export function ActionButton({ disabled, fullWidth, icon, label, loading, onPres
       : variant === 'danger'
         ? palette.danger
         : variant === 'secondary'
-          ? palette.card
+          ? palette.surfaceAlt
           : 'transparent';
 
-  const textColor = variant === 'ghost' ? palette.white : variant === 'secondary' ? palette.ink : palette.white;
+  const textColor = variant === 'danger' ? palette.white : palette.ink;
 
   return (
     <Pressable
@@ -134,6 +140,25 @@ export function ChoiceChip({ label, onPress, selected }: ChoiceChipProps) {
     <Pressable onPress={onPress} style={[styles.chip, selected ? styles.chipSelected : null]}>
       <Text style={[styles.chipText, selected ? styles.chipTextSelected : null]}>{label}</Text>
     </Pressable>
+  );
+}
+
+export function TabSwitcher({ items, onChange, value }: TabSwitcherProps) {
+  return (
+    <View style={styles.tabSwitcher}>
+      {items.map((item) => {
+        const selected = item.key === value;
+
+        return (
+          <Pressable
+            key={item.key}
+            onPress={() => onChange(item.key)}
+            style={[styles.tabItem, selected ? styles.tabItemSelected : null]}>
+            <Text style={[styles.tabItemText, selected ? styles.tabItemTextSelected : null]}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -221,7 +246,8 @@ export const sharedStyles = StyleSheet.create({
   sectionTitle: {
     color: palette.ink,
     fontFamily: typography.heading,
-    fontSize: 24,
+    fontSize: 22,
+    fontWeight: '800',
     marginBottom: spacing.xs,
   },
   supportingText: {
@@ -238,7 +264,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     borderRadius: radii.pill,
-    boxShadow: '0px 12px 24px rgba(20, 40, 58, 0.12)',
+    boxShadow: '0px 10px 20px rgba(17, 17, 17, 0.10)',
     minHeight: 52,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
@@ -260,7 +286,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.lg,
-    boxShadow: '0px 18px 40px rgba(17, 31, 46, 0.10)',
+    boxShadow: '0px 18px 32px rgba(17, 17, 17, 0.08)',
   },
   chip: {
     backgroundColor: palette.surfaceAlt,
@@ -271,15 +297,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   chipSelected: {
-    backgroundColor: palette.accentDeep,
-    borderColor: palette.accentDeep,
+    backgroundColor: palette.accent,
+    borderColor: palette.borderStrong,
   },
   chipText: {
     color: palette.ink,
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: palette.white,
+    color: palette.ink,
   },
   emptyDescription: {
     color: palette.muted,
@@ -370,15 +396,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   heroCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: palette.card,
+    borderColor: palette.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.lg,
+    boxShadow: '0px 20px 36px rgba(17, 17, 17, 0.08)',
   },
   infoStripe: {
     backgroundColor: palette.mist,
+    borderColor: palette.border,
     borderRadius: radii.md,
+    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -408,7 +437,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressValue: {
-    color: palette.accentDeep,
+    color: palette.ink,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -434,37 +463,69 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: palette.ink,
     fontFamily: typography.heading,
-    fontSize: 28,
+    fontSize: 26,
+    fontWeight: '800',
   },
   secondaryButton: {
-    borderColor: palette.borderStrong,
+    borderColor: palette.border,
     borderWidth: 1,
   },
   stack: {
     gap: spacing.md,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.78)',
+    color: palette.muted,
     fontSize: 16,
     lineHeight: 24,
   },
   surfacePressable: {
-    backgroundColor: palette.surfaceAlt,
+    backgroundColor: palette.card,
     borderColor: palette.border,
     borderRadius: radii.md,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md,
   },
+  tabItem: {
+    alignItems: 'center',
+    borderRadius: radii.pill,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  tabItemSelected: {
+    backgroundColor: palette.accent,
+  },
+  tabItemText: {
+    color: palette.muted,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  tabItemTextSelected: {
+    color: palette.ink,
+  },
+  tabSwitcher: {
+    backgroundColor: palette.surfaceAlt,
+    borderColor: palette.border,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: spacing.xs,
+  },
   tag: {
     alignSelf: 'flex-start',
     backgroundColor: palette.accentSoft,
+    borderColor: palette.border,
     borderRadius: radii.pill,
+    borderWidth: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
   tagText: {
-    color: palette.accentDeep,
+    color: palette.ink,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -473,28 +534,32 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   title: {
-    color: palette.white,
+    color: palette.ink,
     fontFamily: typography.heading,
-    fontSize: 38,
+    fontSize: 36,
+    fontWeight: '800',
     lineHeight: 44,
   },
   tokenLabel: {
-    color: 'rgba(255,255,255,0.72)',
+    color: palette.muted,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   tokenPill: {
-    backgroundColor: palette.accentDeep,
+    backgroundColor: palette.card,
+    borderColor: palette.border,
     borderRadius: radii.lg,
+    borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.lg,
   },
   tokenValue: {
-    color: palette.white,
+    color: palette.ink,
     fontFamily: typography.heading,
     fontSize: 32,
+    fontWeight: '800',
     letterSpacing: 2,
   },
 });

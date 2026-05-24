@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { ActionButton, ChoiceChip, InfoStripe, ScreenShell, SectionCard, SectionTitle, TextField, sharedStyles } from '../components/ui';
+import { ActionButton, InfoStripe, ScreenShell, SectionCard, SectionTitle, TabSwitcher, TextField, sharedStyles } from '../components/ui';
 import { brazilianDateToIso, formatDateInput, isValidBrazilianDate } from '../lib/date';
 import { supabase } from '../lib/supabase';
 
@@ -99,14 +99,18 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
   return (
     <ScreenShell
-      subtitle="Entre em um espaco feito para cuidar da rotina, dos combinados e do que importa entre voces."
-      title="Um lugar bonito para construir constancia">
+      subtitle="Entre com calma. A entrada ficou mais limpa para voce focar apenas no proximo passo."
+      title={mode === 'sign-in' ? 'Entrar' : 'Criar conta'}>
       <SectionCard>
-        <SectionTitle caption="Seu acesso fica pronto em poucos segundos." title="Entrar ou criar conta" />
-        <View style={sharedStyles.row}>
-          <ChoiceChip label="Entrar" onPress={() => setMode('sign-in')} selected={mode === 'sign-in'} />
-          <ChoiceChip label="Criar conta" onPress={() => setMode('sign-up')} selected={mode === 'sign-up'} />
-        </View>
+        <SectionTitle caption="Escolha o modo e siga sem excesso de informacao na tela." title="Acesso" />
+        <TabSwitcher
+          items={[
+            { key: 'sign-in', label: 'Entrar' },
+            { key: 'sign-up', label: 'Criar conta' },
+          ]}
+          onChange={(value) => setMode(value as 'sign-in' | 'sign-up')}
+          value={mode}
+        />
         {mode === 'sign-up' ? (
           <>
             <InfoStripe>

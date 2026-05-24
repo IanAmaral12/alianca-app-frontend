@@ -1,21 +1,21 @@
 import { Platform } from 'react-native';
 
 export const palette = {
-  accent: '#EA6F5A',
-  accentDeep: '#14283A',
-  accentSoft: '#FFE6DC',
-  border: '#E8D8C6',
-  borderStrong: '#CDB59C',
-  card: '#FFFDFC',
-  danger: '#AC4F60',
-  gold: '#D0A15F',
-  ink: '#1E2A35',
-  mist: '#EEF3F7',
-  muted: '#6C7683',
-  primaryGlow: '#F4CBBE',
-  success: '#3E7F5D',
-  surface: '#F6EFE8',
-  surfaceAlt: '#FDF7F2',
+  accent: '#FDED00',
+  accentDeep: '#101010',
+  accentSoft: '#FFF7A3',
+  border: '#2A2A2A',
+  borderStrong: '#101010',
+  card: '#FFFFFF',
+  danger: '#D94A4A',
+  gold: '#8A7A00',
+  ink: '#111111',
+  mist: '#F4F4EE',
+  muted: '#5F5F55',
+  primaryGlow: '#FFF7A3',
+  success: '#2F8F57',
+  surface: '#FFFDF4',
+  surfaceAlt: '#F4F1E6',
   white: '#FFFFFF',
 };
 
@@ -35,6 +35,6 @@ export const spacing = {
 };
 
 export const typography = {
-  body: Platform.select({ android: 'sans-serif-medium', default: 'Avenir Next' }),
-  heading: Platform.select({ android: 'serif', default: 'Didot' }),
+  body: Platform.select({ android: 'sans-serif-medium', ios: 'DIN Next Rounded LT Pro', default: 'DIN Next Rounded LT Pro' }),
+  heading: Platform.select({ android: 'sans-serif-black', ios: 'DIN Next Rounded LT Pro', default: 'DIN Next Rounded LT Pro' }),
 };

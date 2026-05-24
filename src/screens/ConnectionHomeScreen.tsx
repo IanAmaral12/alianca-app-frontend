@@ -7,6 +7,7 @@ import {
   ScreenShell,
   SectionCard,
   SectionTitle,
+  TabSwitcher,
   TextField,
   TokenPill,
   sharedStyles,
@@ -29,6 +30,7 @@ export function ConnectionHomeScreen({
   onSignOut,
   profile,
 }: ConnectionHomeScreenProps) {
+  const [activeTab, setActiveTab] = useState<'invite' | 'connect' | 'requests'>('invite');
   const [partnerToken, setPartnerToken] = useState('');
   const [partnerLookup, setPartnerLookup] = useState<PartnerLookup | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -132,97 +134,116 @@ export function ConnectionHomeScreen({
 
   return (
     <ScreenShell
-      subtitle="Esse primeiro passo conecta as duas pessoas no mesmo espaco e libera a jornada em conjunto."
-      title="Conectar voces dois"
+      subtitle="A conexao agora fica dividida em blocos pequenos: compartilhar, buscar e responder."
+      title="Vincule com o parceiro"
       footer={
         <>
           <ActionButton label="Sair" onPress={() => void onSignOut()} variant="ghost" />
         </>
       }>
-      <SectionCard>
-        <SectionTitle caption="Compartilhe este codigo com quem vai construir tudo com voce aqui." title="Seu convite" />
-        <TokenPill value={profile.personal_invite_code} />
-      </SectionCard>
+      <TabSwitcher
+        items={[
+          { key: 'invite', label: 'Meu ID' },
+          { key: 'connect', label: 'Conectar' },
+          { key: 'requests', label: 'Convites' },
+        ]}
+        onChange={(value) => setActiveTab(value as 'invite' | 'connect' | 'requests')}
+        value={activeTab}
+      />
 
-      <SectionCard>
-        <SectionTitle caption="Se voce ja recebeu um codigo, cole abaixo para encontrar a pessoa certa." title="Procurar parceiro" />
-        <TextField
-          autoCapitalize="characters"
-          label="Token do parceiro"
-          onChangeText={(value) => {
-            setPartnerToken(value);
-            setPartnerLookup(null);
-          }}
-          placeholder="Ex.: A1B2C3D4"
-          value={partnerToken}
-        />
-        <View style={sharedStyles.row}>
-          <ActionButton label="Buscar token" loading={isSearching} onPress={searchPartner} variant="secondary" />
-          <ActionButton
-            disabled={outgoingInvites.length > 0}
-            label={outgoingInvites.length > 0 ? 'Aguardando resposta' : 'Enviar convite'}
-            loading={isSending}
-            onPress={sendInvite}
-          />
-        </View>
-        {partnerLookup ? (
-          <InfoStripe>
-            <Text style={sharedStyles.sectionTitle}>Par encontrado</Text>
-            <Text style={sharedStyles.supportingText}>
-              {partnerLookup.full_name} foi encontrado com sucesso. Se estiver tudo certo, envie o convite.
-            </Text>
-          </InfoStripe>
-        ) : null}
-      </SectionCard>
+      {activeTab === 'invite' ? (
+        <SectionCard>
+          <SectionTitle caption="Compartilhe este codigo com quem vai construir essa rotina com voce." title="Seu ID" />
+          <TokenPill value={profile.personal_invite_code} />
+        </SectionCard>
+      ) : null}
 
-      <SectionCard>
-        <SectionTitle caption="Quando alguem te convidar, a decisao aparece aqui." title="Convites recebidos" />
-        {incomingInvites.length === 0 ? (
-          <EmptyState
-            description="Assim que um convite chegar, voce pode aceitar e seguir para o questionario inicial." 
-            title="Nenhum convite recebido"
+      {activeTab === 'connect' ? (
+        <SectionCard>
+          <SectionTitle caption="Se voce recebeu um codigo, busque primeiro e envie o convite em seguida." title="Encontrar parceiro" />
+          <TextField
+            autoCapitalize="characters"
+            label="ID do parceiro"
+            onChangeText={(value) => {
+              setPartnerToken(value);
+              setPartnerLookup(null);
+            }}
+            placeholder="Ex.: A1B2C3D4"
+            value={partnerToken}
           />
-        ) : (
-          incomingInvites.map((invitation) => (
-            <View key={invitation.id} style={{ gap: 10 }}>
-              <Text style={sharedStyles.sectionTitle}>
-                {invitation.inviter_name
-                  ? `${invitation.inviter_name} quer se conectar com voce.`
-                  : 'Voce recebeu um convite para se conectar.'}
-              </Text>
+          <View style={sharedStyles.row}>
+            <ActionButton fullWidth label="Buscar ID" loading={isSearching} onPress={searchPartner} variant="secondary" />
+            <ActionButton
+              fullWidth
+              disabled={outgoingInvites.length > 0}
+              label={outgoingInvites.length > 0 ? 'Aguardando resposta' : 'Enviar convite'}
+              loading={isSending}
+              onPress={sendInvite}
+            />
+          </View>
+          {partnerLookup ? (
+            <InfoStripe>
+              <Text style={sharedStyles.sectionTitle}>Par encontrado</Text>
               <Text style={sharedStyles.supportingText}>
-                Convite recebido em {new Date(invitation.created_at).toLocaleDateString('pt-BR')}.
+                {partnerLookup.full_name} apareceu para esse ID. Se estiver correto, envie o convite.
               </Text>
-              <View style={sharedStyles.row}>
-                <ActionButton
-                  label="Aceitar"
-                  loading={respondingId === invitation.id}
-                  onPress={() => void answerInvite(invitation.id, true)}
-                />
-                <ActionButton
-                  label="Recusar"
-                  loading={respondingId === invitation.id}
-                  onPress={() => void answerInvite(invitation.id, false)}
-                  variant="danger"
-                />
-              </View>
-            </View>
-          ))
-        )}
-      </SectionCard>
+            </InfoStripe>
+          ) : null}
+        </SectionCard>
+      ) : null}
 
-      <SectionCard>
-        <SectionTitle caption="Assim voce sabe quando ja existe algo aguardando resposta." title="Convites enviados" />
-        {outgoingInvites.length === 0 ? (
-          <EmptyState description="Nenhum convite em aberto no momento." title="Sem pendencias" />
-        ) : (
-          outgoingInvites.map((invitation) => (
-            <Text key={invitation.id} style={sharedStyles.supportingText}>
-              Convite pendente desde {new Date(invitation.created_at).toLocaleDateString('pt-BR')}.
-            </Text>
-          ))
-        )}
-      </SectionCard>
+      {activeTab === 'requests' ? (
+        <>
+          <SectionCard>
+            <SectionTitle caption="Quando alguem te convidar, a decisao aparece aqui." title="Recebidos" />
+            {incomingInvites.length === 0 ? (
+              <EmptyState
+                description="Assim que um convite chegar, voce pode aceitar e seguir para o questionario inicial."
+                title="Nenhum convite recebido"
+              />
+            ) : (
+              incomingInvites.map((invitation) => (
+                <View key={invitation.id} style={{ gap: 10 }}>
+                  <Text style={sharedStyles.sectionTitle}>
+                    {invitation.inviter_name
+                      ? `${invitation.inviter_name} quer se conectar com voce.`
+                      : 'Voce recebeu um convite para se conectar.'}
+                  </Text>
+                  <Text style={sharedStyles.supportingText}>
+                    Convite recebido em {new Date(invitation.created_at).toLocaleDateString('pt-BR')}.
+                  </Text>
+                  <View style={sharedStyles.row}>
+                    <ActionButton
+                      label="Aceitar"
+                      loading={respondingId === invitation.id}
+                      onPress={() => void answerInvite(invitation.id, true)}
+                    />
+                    <ActionButton
+                      label="Recusar"
+                      loading={respondingId === invitation.id}
+                      onPress={() => void answerInvite(invitation.id, false)}
+                      variant="danger"
+                    />
+                  </View>
+                </View>
+              ))
+            )}
+          </SectionCard>
+
+          <SectionCard>
+            <SectionTitle caption="Aqui fica o que ja saiu de voce e ainda aguarda resposta." title="Enviados" />
+            {outgoingInvites.length === 0 ? (
+              <EmptyState description="Nenhum convite em aberto no momento." title="Sem pendencias" />
+            ) : (
+              outgoingInvites.map((invitation) => (
+                <Text key={invitation.id} style={sharedStyles.supportingText}>
+                  Convite pendente desde {new Date(invitation.created_at).toLocaleDateString('pt-BR')}.
+                </Text>
+              ))
+            )}
+          </SectionCard>
+        </>
+      ) : null}
     </ScreenShell>
   );
 }

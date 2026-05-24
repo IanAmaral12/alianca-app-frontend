@@ -11,6 +11,7 @@ import {
   SectionCard,
   SectionTitle,
   SurfacePressable,
+  TabSwitcher,
   TextField,
   Tag,
   sharedStyles,
@@ -88,6 +89,7 @@ function createSuggestionId(index: number) {
 }
 
 export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, workspace }: WorkspaceScreenProps) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'cupido' | 'create' | 'tasks'>('overview');
   const [draftId, setDraftId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -99,7 +101,6 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
   const [loading, setLoading] = useState(false);
   const [isRequestingCupido, setIsRequestingCupido] = useState(false);
   const [cupidoSuggestions, setCupidoSuggestions] = useState<CupidoTaskSuggestion[]>([]);
-  const [activeSuggestionId, setActiveSuggestionId] = useState<string | null>(null);
 
   const completedTasks = useMemo(() => tasks.filter((task) => task.completed), [tasks]);
   const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
@@ -305,34 +306,18 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
     }
   }
 
-  async function acceptCupidoSuggestion(suggestion: CupidoTaskSuggestion) {
-    setActiveSuggestionId(suggestion.id);
-
-    try {
-      const { error } = await supabase.from('couple_tasks').insert({
-        category: suggestion.category,
-        created_by: currentUserId,
-        custom_weekdays: suggestion.frequency === 'custom_weekdays' ? suggestion.custom_weekdays : null,
-        description: suggestion.description,
-        difficulty: suggestion.difficulty,
-        due_at: suggestion.due_at,
-        frequency: suggestion.frequency,
-        title: suggestion.title,
-        workspace_id: workspace.id,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setCupidoSuggestions((currentValue) => currentValue.filter((item) => item.id !== suggestion.id));
-      await onRefresh();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nao foi possivel adicionar a sugestao.';
-      Alert.alert('Erro ao aceitar sugestao', message);
-    } finally {
-      setActiveSuggestionId(null);
-    }
+  function acceptCupidoSuggestion(suggestion: CupidoTaskSuggestion) {
+    setDraftId(null);
+    setTitle(suggestion.title);
+    setDescription(suggestion.description ?? '');
+    setDifficulty('easy');
+    setFrequency('one_time');
+    setCategory('routine');
+    setCustomWeekdays([]);
+    setDueAt('');
+    setCupidoSuggestions((currentValue) => currentValue.filter((item) => item.id !== suggestion.id));
+    setActiveTab('create');
+    Alert.alert('Sugestao aplicada', 'Agora escolha categoria, dificuldade e frequencia ou prazo antes de salvar a tarefa.');
   }
 
   function dismissCupidoSuggestion(suggestionId: string) {
@@ -341,209 +326,227 @@ export function WorkspaceScreen({ currentUserId, onRefresh, onSignOut, tasks, wo
 
   return (
     <ScreenShell
-      subtitle="Organizem o que importa agora, acompanhem o ritmo da semana e avancem juntos no mesmo compasso."
+      subtitle="O workspace agora fica dividido por contexto: progresso, sugestoes, criacao e acompanhamento."
       title="Agenda do casal"
       footer={
         <>
           <ActionButton label="Sair" onPress={() => void onSignOut()} variant="ghost" />
         </>
       }>
-      <SectionCard>
-        <SectionTitle caption="Cada tarefa concluida ajuda a abrir o proximo degrau da jornada." title="Seu ritmo atual" />
-        <View style={sharedStyles.row}>
-          <MetricPill label="Nivel" value={String(workspace.level)} />
-          <MetricPill label="XP total" value={String(workspace.xp_total)} />
-          <MetricPill label="Concluidas" value={String(completedTasks.length)} />
-        </View>
-        <ProgressBar
-          caption={`${levelProgress.remainingXp} XP para o proximo nivel`}
-          progress={levelProgress.progressRatio}
-          title={`Nivel ${levelProgress.currentLevel}`}
-          valueLabel={`${levelProgress.progressWithinLevel}/${levelProgress.levelSpan} XP`}
-        />
-      </SectionCard>
+      <TabSwitcher
+        items={[
+          { key: 'overview', label: 'Painel' },
+          { key: 'cupido', label: 'Cupido' },
+          { key: 'create', label: draftId ? 'Editar' : 'Nova' },
+          { key: 'tasks', label: 'Tarefas' },
+        ]}
+        onChange={(value) => setActiveTab(value as 'overview' | 'cupido' | 'create' | 'tasks')}
+        value={activeTab}
+      />
 
-      <SectionCard>
-        <SectionTitle
-          caption="O Cupido usa o historico de voces, os questionarios e o momento atual do casal para sugerir proximos passos."
-          title="Sugestoes do Cupido"
-        />
-        <ActionButton
-          label="Pedir sugestoes de tarefa pro Cupido"
-          loading={isRequestingCupido}
-          onPress={requestCupidoSuggestions}
-        />
-        {cupidoSuggestions.length === 0 ? (
-          <EmptyState
-            description="Quando voce pedir, o Cupido devolve 5 ideias de tarefa prontas para aceitar ou descartar."
-            title="Nenhuma sugestao carregada"
+      {activeTab === 'overview' ? (
+        <SectionCard>
+          <SectionTitle caption="Um resumo rapido para voce saber onde o casal esta agora." title="Painel" />
+          <View style={sharedStyles.row}>
+            <MetricPill label="Nivel" value={String(workspace.level)} />
+            <MetricPill label="XP total" value={String(workspace.xp_total)} />
+            <MetricPill label="Concluidas" value={String(completedTasks.length)} />
+          </View>
+          <ProgressBar
+            caption={`${levelProgress.remainingXp} XP para o proximo nivel`}
+            progress={levelProgress.progressRatio}
+            title={`Nivel ${levelProgress.currentLevel}`}
+            valueLabel={`${levelProgress.progressWithinLevel}/${levelProgress.levelSpan} XP`}
           />
-        ) : (
-          cupidoSuggestions.map((suggestion) => (
-            <InfoStripe key={suggestion.id}>
-              <View style={sharedStyles.row}>
-                <Tag label={categoryLabel(suggestion.category)} />
-                <Tag label={frequencyLabel(suggestion.frequency)} />
-                <Tag
-                  label={
-                    suggestion.difficulty === 'easy'
-                      ? 'Leve'
-                      : suggestion.difficulty === 'medium'
-                        ? 'Medio'
-                        : 'Intenso'
-                  }
-                />
-                {suggestion.due_at ? <Tag label={`Prazo ${new Date(suggestion.due_at).toLocaleDateString('pt-BR')}`} /> : null}
-              </View>
-              <Text style={sharedStyles.sectionTitle}>{suggestion.title}</Text>
-              {suggestion.description ? <Text style={sharedStyles.supportingText}>{suggestion.description}</Text> : null}
-              {suggestion.frequency === 'custom_weekdays' && suggestion.custom_weekdays?.length ? (
-                <Text style={sharedStyles.supportingText}>
-                  Dias: {suggestion.custom_weekdays.map((weekday) => weekdayLabel(weekday)).join(', ')}
-                </Text>
-              ) : null}
-              <View style={sharedStyles.row}>
-                <ActionButton
-                  label="Aceitar"
-                  loading={activeSuggestionId === suggestion.id}
-                  onPress={() => void acceptCupidoSuggestion(suggestion)}
-                />
-                <ActionButton
-                  label="Desconsiderar"
-                  onPress={() => dismissCupidoSuggestion(suggestion.id)}
-                  variant="secondary"
-                />
-              </View>
+          {openTasks[0] ? (
+            <InfoStripe>
+              <Text style={sharedStyles.sectionTitle}>Proxima tarefa em foco</Text>
+              <Text style={sharedStyles.supportingText}>{openTasks[0].title}</Text>
+              {openTasks[0].description ? <Text style={sharedStyles.supportingText}>{openTasks[0].description}</Text> : null}
             </InfoStripe>
-          ))
-        )}
-      </SectionCard>
+          ) : (
+            <EmptyState description="Assim que a primeira tarefa nascer, ela aparece aqui como foco principal." title="Nada em foco agora" />
+          )}
+        </SectionCard>
+      ) : null}
 
-      <SectionCard>
-        <SectionTitle caption="Planejem algo simples ou algo especial. O importante e manter o movimento." title={draftId ? 'Editar tarefa' : 'Nova tarefa'} />
-        <TextField label="Titulo" onChangeText={setTitle} placeholder="Ex.: Planejar encontro da semana" value={title} />
-        <TextField
-          label="Descricao"
-          multiline
-          onChangeText={setDescription}
-          placeholder="Detalhes, contexto ou como executar a tarefa."
-          value={description}
-        />
-        <TextField
-          keyboardType="number-pad"
-          label="Prazo"
-          onChangeText={(value) => setDueAt(formatDateInput(value))}
-          placeholder="DD/MM/AAAA"
-          value={dueAt}
-        />
-        <View style={sharedStyles.row}>
-          {difficultyOptions.map((option) => (
-            <ChoiceChip
-              key={option.value}
-              label={option.label}
-              onPress={() => setDifficulty(option.value)}
-              selected={difficulty === option.value}
+      {activeTab === 'cupido' ? (
+        <SectionCard>
+          <SectionTitle
+            caption="O Cupido devolve ideias simples. Se alguma fizer sentido, voce completa os detalhes e salva."
+            title="Sugestoes do Cupido"
+          />
+          <ActionButton
+            label="Pedir sugestoes de tarefa pro Cupido"
+            loading={isRequestingCupido}
+            onPress={requestCupidoSuggestions}
+          />
+          {cupidoSuggestions.length === 0 ? (
+            <EmptyState
+              description="Quando voce pedir, o Cupido devolve 5 ideias de tarefa prontas para revisar."
+              title="Nenhuma sugestao carregada"
             />
-          ))}
-        </View>
-        <Text style={sharedStyles.sectionTitle}>Frequencia</Text>
-        <View style={sharedStyles.row}>
-          {frequencyOptions.map((option) => (
-            <ChoiceChip
-              key={option.value}
-              label={option.label}
-              onPress={() => selectFrequency(option.value)}
-              selected={frequency === option.value}
-            />
-          ))}
-        </View>
-        {frequency === 'custom_weekdays' ? (
-          <>
-            <Text style={sharedStyles.sectionTitle}>Dias da semana</Text>
-            <View style={sharedStyles.row}>
-              {weekdayOptions.map((option) => (
-                <ChoiceChip
-                  key={option.value}
-                  label={option.label}
-                  onPress={() => toggleWeekday(option.value)}
-                  selected={customWeekdays.includes(option.value)}
-                />
-              ))}
-            </View>
-          </>
-        ) : null}
-        <Text style={sharedStyles.sectionTitle}>Categoria</Text>
-        <View style={sharedStyles.row}>
-          {categoryOptions.map((option) => (
-            <ChoiceChip
-              key={option.value}
-              label={option.label}
-              onPress={() => setCategory(option.value)}
-              selected={category === option.value}
-            />
-          ))}
-        </View>
-        <View style={sharedStyles.row}>
-          <ActionButton label={draftId ? 'Salvar alteracoes' : 'Adicionar tarefa'} loading={loading} onPress={saveTask} />
-          {draftId ? <ActionButton label="Cancelar edicao" onPress={resetComposer} variant="secondary" /> : null}
-        </View>
-      </SectionCard>
+          ) : (
+            cupidoSuggestions.map((suggestion) => (
+              <InfoStripe key={suggestion.id}>
+                <Text style={sharedStyles.sectionTitle}>{suggestion.title}</Text>
+                {suggestion.description ? <Text style={sharedStyles.supportingText}>{suggestion.description}</Text> : null}
+                <View style={sharedStyles.row}>
+                  <ActionButton
+                    label="Usar no formulario"
+                    onPress={() => acceptCupidoSuggestion(suggestion)}
+                  />
+                  <ActionButton
+                    label="Desconsiderar"
+                    onPress={() => dismissCupidoSuggestion(suggestion.id)}
+                    variant="secondary"
+                  />
+                </View>
+              </InfoStripe>
+            ))
+          )}
+        </SectionCard>
+      ) : null}
 
-      <SectionCard>
-        <SectionTitle caption="Tudo o que ainda pede atencao aparece aqui primeiro." title="Em andamento" />
-        {openTasks.length === 0 ? (
-          <EmptyState description="Crie a primeira tarefa e o espaco ganha vida imediatamente." title="Nenhuma tarefa aberta" />
-        ) : (
-          openTasks.map((task) => (
-            <SurfacePressable key={task.id} onPress={() => startEditing(task)}>
+      {activeTab === 'create' ? (
+        <SectionCard>
+          <SectionTitle caption="Escolha os detalhes com calma antes de adicionar ao fluxo do casal." title={draftId ? 'Editar tarefa' : 'Nova tarefa'} />
+          <TextField label="Titulo" onChangeText={setTitle} placeholder="Ex.: Planejar encontro da semana" value={title} />
+          <TextField
+            label="Descricao"
+            multiline
+            onChangeText={setDescription}
+            placeholder="Detalhes, contexto ou como executar a tarefa."
+            value={description}
+          />
+          <TextField
+            keyboardType="number-pad"
+            label="Prazo"
+            onChangeText={(value) => setDueAt(formatDateInput(value))}
+            placeholder="DD/MM/AAAA"
+            value={dueAt}
+          />
+          <Text style={sharedStyles.sectionTitle}>Dificuldade</Text>
+          <View style={sharedStyles.row}>
+            {difficultyOptions.map((option) => (
+              <ChoiceChip
+                key={option.value}
+                label={option.label}
+                onPress={() => setDifficulty(option.value)}
+                selected={difficulty === option.value}
+              />
+            ))}
+          </View>
+          <Text style={sharedStyles.sectionTitle}>Frequencia</Text>
+          <View style={sharedStyles.row}>
+            {frequencyOptions.map((option) => (
+              <ChoiceChip
+                key={option.value}
+                label={option.label}
+                onPress={() => selectFrequency(option.value)}
+                selected={frequency === option.value}
+              />
+            ))}
+          </View>
+          {frequency === 'custom_weekdays' ? (
+            <>
+              <Text style={sharedStyles.sectionTitle}>Dias da semana</Text>
               <View style={sharedStyles.row}>
-                <Tag label={categoryLabel(task.category)} />
-                <Tag label={frequencyLabel(task.frequency)} />
-                <Tag label={task.difficulty === 'easy' ? 'Leve' : task.difficulty === 'medium' ? 'Medio' : 'Intenso'} />
-                <Tag label={`${task.points} XP`} />
-                {task.due_at ? <Tag label={`Prazo ${new Date(task.due_at).toLocaleDateString('pt-BR')}`} /> : null}
+                {weekdayOptions.map((option) => (
+                  <ChoiceChip
+                    key={option.value}
+                    label={option.label}
+                    onPress={() => toggleWeekday(option.value)}
+                    selected={customWeekdays.includes(option.value)}
+                  />
+                ))}
               </View>
-              <Text style={sharedStyles.sectionTitle}>{task.title}</Text>
-              {task.description ? <Text style={sharedStyles.supportingText}>{task.description}</Text> : null}
-              {task.frequency === 'custom_weekdays' && task.custom_weekdays?.length ? (
-                <Text style={sharedStyles.supportingText}>
-                  Dias: {task.custom_weekdays.map((weekday) => weekdayLabel(weekday)).join(', ')}
-                </Text>
-              ) : null}
-              <View style={sharedStyles.row}>
-                <ActionButton label="Concluir" onPress={() => void toggleTask(task)} />
-                <ActionButton label="Editar" onPress={() => startEditing(task)} variant="secondary" />
-                <ActionButton label="Excluir" onPress={() => void deleteTask(task.id)} variant="danger" />
-              </View>
-            </SurfacePressable>
-          ))
-        )}
-      </SectionCard>
+            </>
+          ) : null}
+          <Text style={sharedStyles.sectionTitle}>Categoria</Text>
+          <View style={sharedStyles.row}>
+            {categoryOptions.map((option) => (
+              <ChoiceChip
+                key={option.value}
+                label={option.label}
+                onPress={() => setCategory(option.value)}
+                selected={category === option.value}
+              />
+            ))}
+          </View>
+          <View style={sharedStyles.row}>
+            <ActionButton label={draftId ? 'Salvar alteracoes' : 'Adicionar tarefa'} loading={loading} onPress={saveTask} />
+            {(draftId || title || description) ? <ActionButton label="Limpar" onPress={resetComposer} variant="secondary" /> : null}
+          </View>
+        </SectionCard>
+      ) : null}
 
-      <SectionCard>
-        <SectionTitle caption="Tudo o que ja foi cuidado permanece registrado como memoria de avancos." title="Concluidas" />
-        {completedTasks.length === 0 ? (
-          <EmptyState description="Quando algo for finalizado, ele aparece aqui como parte da historia de voces." title="Nada concluido ainda" />
-        ) : (
-          completedTasks.map((task) => (
-            <InfoStripe key={task.id}>
-              <Text style={sharedStyles.sectionTitle}>{task.title}</Text>
-              <Text style={sharedStyles.supportingText}>
-                Concluida em {task.completed_at ? new Date(task.completed_at).toLocaleDateString('pt-BR') : '-'} • {task.points} XP
-              </Text>
-              <Text style={sharedStyles.supportingText}>
-                {categoryLabel(task.category)} • {frequencyLabel(task.frequency)}
-                {task.frequency === 'custom_weekdays' && task.custom_weekdays?.length
-                  ? ` • ${task.custom_weekdays.map((weekday) => weekdayLabel(weekday)).join(', ')}`
-                  : ''}
-              </Text>
-              <View style={sharedStyles.row}>
-                <ActionButton label="Reabrir" onPress={() => void toggleTask(task)} variant="secondary" />
-              </View>
-            </InfoStripe>
-          ))
-        )}
-      </SectionCard>
+      {activeTab === 'tasks' ? (
+        <>
+          <SectionCard>
+            <SectionTitle caption="Tudo o que ainda pede atencao aparece aqui primeiro." title="Em andamento" />
+            {openTasks.length === 0 ? (
+              <EmptyState description="Crie a primeira tarefa e o espaco ganha vida imediatamente." title="Nenhuma tarefa aberta" />
+            ) : (
+              openTasks.map((task) => (
+                <SurfacePressable key={task.id} onPress={() => startEditing(task)}>
+                  <View style={sharedStyles.row}>
+                    <Tag label={categoryLabel(task.category)} />
+                    <Tag label={frequencyLabel(task.frequency)} />
+                    <Tag label={task.difficulty === 'easy' ? 'Leve' : task.difficulty === 'medium' ? 'Medio' : 'Intenso'} />
+                    <Tag label={`${task.points} XP`} />
+                    {task.due_at ? <Tag label={`Prazo ${new Date(task.due_at).toLocaleDateString('pt-BR')}`} /> : null}
+                  </View>
+                  <Text style={sharedStyles.sectionTitle}>{task.title}</Text>
+                  {task.description ? <Text style={sharedStyles.supportingText}>{task.description}</Text> : null}
+                  {task.frequency === 'custom_weekdays' && task.custom_weekdays?.length ? (
+                    <Text style={sharedStyles.supportingText}>
+                      Dias: {task.custom_weekdays.map((weekday) => weekdayLabel(weekday)).join(', ')}
+                    </Text>
+                  ) : null}
+                  <View style={sharedStyles.row}>
+                    <ActionButton label="Concluir" onPress={() => void toggleTask(task)} />
+                    <ActionButton
+                      label="Editar"
+                      onPress={() => {
+                        startEditing(task);
+                        setActiveTab('create');
+                      }}
+                      variant="secondary"
+                    />
+                    <ActionButton label="Excluir" onPress={() => void deleteTask(task.id)} variant="danger" />
+                  </View>
+                </SurfacePressable>
+              ))
+            )}
+          </SectionCard>
+
+          <SectionCard>
+            <SectionTitle caption="Tudo o que ja foi cuidado permanece registrado como memoria de avancos." title="Concluidas" />
+            {completedTasks.length === 0 ? (
+              <EmptyState description="Quando algo for finalizado, ele aparece aqui como parte da historia de voces." title="Nada concluido ainda" />
+            ) : (
+              completedTasks.map((task) => (
+                <InfoStripe key={task.id}>
+                  <Text style={sharedStyles.sectionTitle}>{task.title}</Text>
+                  <Text style={sharedStyles.supportingText}>
+                    Concluida em {task.completed_at ? new Date(task.completed_at).toLocaleDateString('pt-BR') : '-'} • {task.points} XP
+                  </Text>
+                  <Text style={sharedStyles.supportingText}>
+                    {categoryLabel(task.category)} • {frequencyLabel(task.frequency)}
+                    {task.frequency === 'custom_weekdays' && task.custom_weekdays?.length
+                      ? ` • ${task.custom_weekdays.map((weekday) => weekdayLabel(weekday)).join(', ')}`
+                      : ''}
+                  </Text>
+                  <View style={sharedStyles.row}>
+                    <ActionButton label="Reabrir" onPress={() => void toggleTask(task)} variant="secondary" />
+                  </View>
+                </InfoStripe>
+              ))
+            )}
+          </SectionCard>
+        </>
+      ) : null}
     </ScreenShell>
   );
 }

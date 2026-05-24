@@ -88,12 +88,7 @@ export type CoupleTask = {
 };
 
 export type CupidoTaskSuggestionInput = {
-  category: TaskCategory;
-  custom_weekdays: Weekday[] | null;
   description: string | null;
-  difficulty: TaskDifficulty;
-  due_at: string | null;
-  frequency: TaskFrequency;
   title: string;
 };
 
