@@ -185,6 +185,11 @@ export function ConnectionHomeScreen({
         ) : (
           incomingInvites.map((invitation) => (
             <View key={invitation.id} style={{ gap: 10 }}>
+              <Text style={sharedStyles.sectionTitle}>
+                {invitation.inviter_name
+                  ? `${invitation.inviter_name} quer se conectar com voce.`
+                  : 'Voce recebeu um convite para se conectar.'}
+              </Text>
               <Text style={sharedStyles.supportingText}>
                 Convite recebido em {new Date(invitation.created_at).toLocaleDateString('pt-BR')}.
               </Text>

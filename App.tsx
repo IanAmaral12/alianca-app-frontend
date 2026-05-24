@@ -118,7 +118,7 @@ export default function App() {
 
       let profile = (profileResult.data ?? null) as Profile | null;
       const userQuestionnaire = (questionnaireResult.data ?? null) as UserQuestionnaire | null;
-      const invitations = (invitationsResult.data ?? []) as PartnershipInvitation[];
+      let invitations = (invitationsResult.data ?? []) as PartnershipInvitation[];
 
       const metadataFullName = readMetadataText(session?.user.user_metadata?.full_name);
       const metadataBirthDate = readMetadataText(session?.user.user_metadata?.birth_date);
@@ -148,6 +148,34 @@ export default function App() {
         }
 
         profile = hydratedProfile as Profile;
+      }
+
+      const inviterIds = Array.from(
+        new Set(
+          invitations
+            .map((invitation) => invitation.inviter_id)
+            .filter((inviterId) => inviterId && inviterId !== userId),
+        ),
+      );
+
+      if (inviterIds.length > 0) {
+        const { data: inviterProfiles, error: inviterProfilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', inviterIds);
+
+        if (inviterProfilesError) {
+          throw inviterProfilesError;
+        }
+
+        const inviterNameById = new Map(
+          (inviterProfiles ?? []).map((inviterProfile) => [inviterProfile.id, inviterProfile.full_name]),
+        );
+
+        invitations = invitations.map((invitation) => ({
+          ...invitation,
+          inviter_name: inviterNameById.get(invitation.inviter_id) ?? null,
+        }));
       }
 
       let children: CoupleChild[] = [];

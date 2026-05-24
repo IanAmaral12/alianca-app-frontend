@@ -1,6 +1,9 @@
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
 export type RelationshipStage = 'dating' | 'engaged' | 'married';
 export type TaskDifficulty = 'easy' | 'medium' | 'hard';
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'one_time' | 'custom_weekdays';
+export type TaskCategory = 'leisure' | 'sport' | 'commitment' | 'children' | 'routine' | 'romantic_date';
+export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 export type ChildGender = 'female' | 'male' | 'nonbinary' | 'prefer_not_to_say';
 
 export type Profile = {
@@ -18,6 +21,7 @@ export type PartnershipInvitation = {
   created_at: string;
   id: string;
   invitee_id: string;
+  inviter_name?: string | null;
   inviter_id: string;
   responded_at: string | null;
   status: InvitationStatus;
@@ -64,20 +68,37 @@ export type CoupleChild = {
 };
 
 export type CoupleTask = {
+  category: TaskCategory;
   completed: boolean;
   completed_at: string | null;
   completed_by: string | null;
   created_at: string;
   created_by: string;
+  custom_weekdays: Weekday[] | null;
   description: string | null;
   difficulty: TaskDifficulty;
   due_at: string | null;
+  frequency: TaskFrequency;
   id: string;
   points: number;
   title: string;
   updated_at: string;
   updated_by: string | null;
   workspace_id: string;
+};
+
+export type CupidoTaskSuggestionInput = {
+  category: TaskCategory;
+  custom_weekdays: Weekday[] | null;
+  description: string | null;
+  difficulty: TaskDifficulty;
+  due_at: string | null;
+  frequency: TaskFrequency;
+  title: string;
+};
+
+export type CupidoTaskSuggestion = CupidoTaskSuggestionInput & {
+  id: string;
 };
 
 export type PartnerLookup = {
