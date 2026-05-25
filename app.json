@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Alianca",
+    "name": "Aliança",
     "slug": "alianca-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,10 +20,8 @@
     "android": {
       "package": "com.alianca.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
